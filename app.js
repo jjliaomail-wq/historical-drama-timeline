@@ -130,60 +130,74 @@ function extractSheetId(url) {
     return m ? m[1] : null;
 }
 
-// 用 Google Visualization JSONP 載入試算表（支援 file:// 直接開啟）
-function loadFromGoogleSheet(sheetId) {
-    return new Promise((resolve, reject) => {
-        const callbackName = '_gvizCallback_' + Date.now();
-        const script = document.createElement('script');
-        const timeout = setTimeout(() => {
-            delete window[callbackName];
-            script.remove();
-            reject(new Error('timeout'));
-        }, 10000);
-
-        // 固定欄位順序，不依賴 label 名稱（A=era, B=period, C=title, D=description, E=youtubeUrl）
-        const FIELD_NAMES = ['era', 'period', 'title', 'description', 'youtubeUrl'];
-
-        window[callbackName] = function(response) {
-            clearTimeout(timeout);
-            delete window[callbackName];
-            script.remove();
-            try {
-                const table = response.table;
-                if (!table || !table.rows) { resolve([]); return; }
-
-                const rows = table.rows.map(row => {
-                    const obj = {};
-                    row.c.forEach((cell, i) => {
-                        const key = FIELD_NAMES[i] || `col${i}`;
-                        let val = cell ? String(cell.v || '').trim() : '';
-                        // 清理 Markdown 連結格式 [text](url) → 只保留 url
-                        if (key === 'youtubeUrl') {
-                            const mdMatch = val.match(/\(https?:\/\/[^)]+\)/);
-                            if (mdMatch) val = mdMatch[0].slice(1, -1);
-                        }
-                        obj[key] = val;
-                    });
-                    return obj;
-                });
-
-                // 過濾掉 title 是空白的列，以及標題行（title 欄位含括號代表是 header）
-                const filtered = rows.filter(r =>
-                    r.title && !r.title.includes('(') && !r.title.toLowerCase().includes('title')
-                );
-                resolve(filtered);
-            } catch(e) {
-                reject(e);
+// 簡易且強大的 CSV 解析器，支援雙引號、逗號與換行
+function parseCSV(text) {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+    
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i+1];
+        
+        if (c === '"') {
+            if (inQuotes && next === '"') {
+                row[row.length - 1] += '"';
+                i++; // 跳過下一個雙引號
+            } else {
+                inQuotes = !inQuotes;
             }
-        };
-
-        // headers=0 → 讓 gviz 把所有列（包含第一列）都當作資料，我們自己跳過 header
-        // 使用 tqx=responseHandler:callbackName 避免 google.visualization 命名空間未定義錯誤
-        script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&headers=0`;
-        script.onerror = () => { clearTimeout(timeout); reject(new Error('script load error')); };
-        document.head.appendChild(script);
-    });
+        } else if (c === ',' && !inQuotes) {
+            row.push("");
+        } else if ((c === '\r' || c === '\n') && !inQuotes) {
+            if (c === '\r' && next === '\n') { i++; }
+            lines.push(row);
+            row = [""];
+        } else {
+            row[row.length - 1] += c;
+        }
+    }
+    if (row.length > 1 || row[0] !== "") {
+        lines.push(row);
+    }
+    return lines;
 }
+
+// 用標準 fetch 載入試算表發布的 CSV（相容性最好，完全不依賴 Google JS 庫）
+async function loadFromGoogleSheet(sheetId) {
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error(`HTTP 錯誤: ${res.status}`);
+    const text = await res.text();
+    
+    const parsedLines = parseCSV(text);
+    if (parsedLines.length <= 1) return [];
+
+    const FIELD_NAMES = ['era', 'period', 'title', 'description', 'youtubeUrl'];
+    const rows = [];
+
+    // 跳過第一行 (header)
+    for (let i = 1; i < parsedLines.length; i++) {
+        const line = parsedLines[i];
+        if (line.length === 0 || !line[0] && !line[1] && !line[2]) continue; // 跳過空行
+        
+        const obj = {};
+        FIELD_NAMES.forEach((key, colIndex) => {
+            let val = line[colIndex] ? String(line[colIndex]).trim() : '';
+            // 清理 Markdown 連結格式 [text](url) → 只保留 url
+            if (key === 'youtubeUrl') {
+                const mdMatch = val.match(/\(https?:\/\/[^)]+\)/);
+                if (mdMatch) val = mdMatch[0].slice(1, -1);
+            }
+            obj[key] = val;
+        });
+        rows.push(obj);
+    }
+
+    // 過濾掉 title 是空白的列
+    return rows.filter(r => r.title);
+}
+
 
 async function loadData() {
     console.log('📡 loadData 開始，URL:', GOOGLE_SHEET_CSV_URL);
