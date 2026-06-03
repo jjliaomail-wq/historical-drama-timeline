@@ -156,15 +156,20 @@ function loadFromGoogleSheet(sheetId) {
                     const obj = {};
                     row.c.forEach((cell, i) => {
                         const key = FIELD_NAMES[i] || `col${i}`;
-                        obj[key] = cell ? String(cell.v || '').trim() : '';
+                        let val = cell ? String(cell.v || '').trim() : '';
+                        // 清理 Markdown 連結格式 [text](url) → 只保留 url
+                        if (key === 'youtubeUrl') {
+                            const mdMatch = val.match(/\(https?:\/\/[^)]+\)/);
+                            if (mdMatch) val = mdMatch[0].slice(1, -1);
+                        }
+                        obj[key] = val;
                     });
                     return obj;
                 });
 
-                // 過濾掉 title 是空白或是 header 文字的列
-                const HEADER_WORDS = ['title', '劇名', 'name'];
+                // 過濾掉 title 是空白的列，以及標題行（title 欄位含括號代表是 header）
                 const filtered = rows.filter(r =>
-                    r.title && !HEADER_WORDS.includes(r.title.toLowerCase())
+                    r.title && !r.title.includes('(') && !r.title.toLowerCase().includes('title')
                 );
                 resolve(filtered);
             } catch(e) {
