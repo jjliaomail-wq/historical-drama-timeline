@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歷史劇時光機 - 經典朝代巡禮</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <div class="particles" id="particles"></div>
+    
+    <header>
+        <h1 class="title">歷史劇時光機</h1>
+        <p class="subtitle">跟隨時間的長河，品味每個朝代的經典愛恨情仇</p>
+    </header>
+
+    <main class="timeline-container">
+        <div class="timeline-line"></div>
+        <div id="timeline-content"></div>
+    </main>
+
+    <!-- 引入 PapaParse 用來解析 Google Sheet CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

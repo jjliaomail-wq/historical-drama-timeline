@@ -1,0 +1,4 @@
+# 不需要追蹤的檔案
+node_modules/
+.env
+*.log
