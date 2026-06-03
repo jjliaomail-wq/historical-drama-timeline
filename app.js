@@ -141,32 +141,39 @@ function loadFromGoogleSheet(sheetId) {
             reject(new Error('timeout'));
         }, 10000);
 
+        // 固定欄位順序，不依賴 label 名稱（A=era, B=period, C=title, D=description, E=youtubeUrl）
+        const FIELD_NAMES = ['era', 'period', 'title', 'description', 'youtubeUrl'];
+
         window[callbackName] = function(response) {
             clearTimeout(timeout);
             delete window[callbackName];
             script.remove();
             try {
-                // gviz 回傳格式：google.visualization.Query.setResponse({...})
-                // PapaParse 抓不到但 JSONP 可以
                 const table = response.table;
                 if (!table || !table.rows) { resolve([]); return; }
 
-                // 第一列是欄位標題
-                const cols = table.cols.map(c => c.label.split(' ')[0].trim());
                 const rows = table.rows.map(row => {
                     const obj = {};
                     row.c.forEach((cell, i) => {
-                        obj[cols[i]] = cell ? (cell.v || '') : '';
+                        const key = FIELD_NAMES[i] || `col${i}`;
+                        obj[key] = cell ? String(cell.v || '').trim() : '';
                     });
                     return obj;
                 });
-                resolve(rows.filter(r => r.title));
+
+                // 過濾掉 title 是空白或是 header 文字的列
+                const HEADER_WORDS = ['title', '劇名', 'name'];
+                const filtered = rows.filter(r =>
+                    r.title && !HEADER_WORDS.includes(r.title.toLowerCase())
+                );
+                resolve(filtered);
             } catch(e) {
                 reject(e);
             }
         };
 
-        script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&callback=${callbackName}`;
+        // headers=0 → 讓 gviz 把所有列（包含第一列）都當作資料，我們自己跳過 header
+        script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=0&callback=${callbackName}`;
         script.onerror = () => { clearTimeout(timeout); reject(new Error('script load error')); };
         document.head.appendChild(script);
     });
