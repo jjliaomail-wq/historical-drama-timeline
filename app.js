@@ -185,8 +185,10 @@ function loadFromGoogleSheet(sheetId) {
 }
 
 async function loadData() {
+    console.log('📡 loadData 開始，URL:', GOOGLE_SHEET_CSV_URL);
     if (GOOGLE_SHEET_CSV_URL && GOOGLE_SHEET_CSV_URL.trim() !== "") {
         const sheetId = extractSheetId(GOOGLE_SHEET_CSV_URL);
+        console.log('📋 sheetId:', sheetId);
         if (!sheetId) {
             console.warn('無法解析試算表 ID，使用預設資料。');
             if (typeof dramas !== 'undefined') renderTimeline(dramas);
@@ -194,6 +196,7 @@ async function loadData() {
         }
         try {
             const rows = await loadFromGoogleSheet(sheetId);
+            console.log('✅ 從試算表取得行數:', rows.length, rows.slice(0,2));
             if (rows.length === 0) {
                 console.log('試算表目前沒有資料，顯示預設範例。');
                 if (typeof dramas !== 'undefined') renderTimeline(dramas);
@@ -201,10 +204,11 @@ async function loadData() {
                 renderTimeline(rows);
             }
         } catch(err) {
-            console.error('載入試算表失敗:', err);
+            console.error('❌ 載入試算表失敗:', err);
             if (typeof dramas !== 'undefined') renderTimeline(dramas);
         }
     } else {
+        console.log('⚠️ 沒有設定 URL，使用預設資料');
         if (typeof dramas !== 'undefined') renderTimeline(dramas);
     }
 }
