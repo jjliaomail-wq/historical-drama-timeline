@@ -212,4 +212,10 @@ async function loadData() {
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     createParticles();
+
+    // 每 2 分鐘自動重新讀取試算表
+    setInterval(() => {
+        console.log('🔄 自動更新試算表資料...');
+        loadData();
+    }, 2 * 60 * 1000);
 });
