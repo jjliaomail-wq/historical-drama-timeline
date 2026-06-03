@@ -178,7 +178,8 @@ function loadFromGoogleSheet(sheetId) {
         };
 
         // headers=0 → 讓 gviz 把所有列（包含第一列）都當作資料，我們自己跳過 header
-        script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&headers=0&callback=${callbackName}`;
+        // 使用 tqx=responseHandler:callbackName 避免 google.visualization 命名空間未定義錯誤
+        script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${callbackName}&headers=0`;
         script.onerror = () => { clearTimeout(timeout); reject(new Error('script load error')); };
         document.head.appendChild(script);
     });
