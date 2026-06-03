@@ -73,9 +73,10 @@ header {
 }
 
 .timeline-container {
-    max-width: 1400px;
+    max-width: 1600px; /* 電腦版拉寬，讓影集方塊幾乎跟螢幕一樣寬 */
+    width: 92%;
     margin: 0 auto;
-    padding: 0 3rem 6rem;
+    padding: 0 1rem 6rem;
     position: relative;
 }
 
@@ -133,11 +134,11 @@ header {
     letter-spacing: 0.08em;
 }
 
-/* Cards within each era: 2-3 column grid on desktop */
+/* Cards within each era: 1 column, cards span full container width */
 .era-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    gap: 2rem;
 }
 
 .timeline-item {
@@ -168,16 +169,16 @@ header {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--card-border);
     border-radius: 20px;
-    padding: 2rem;
+    padding: 2.5rem;
     width: 100%;
     box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
     overflow: hidden;
     position: relative;
     display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1.5rem;
+    flex-direction: row; /* 文字在左，影片在右 */
+    align-items: center; /* 垂直置中對齊 */
+    gap: 3rem;
 }
 
 .card-text {
@@ -263,14 +264,15 @@ header {
     display: block;
     position: relative;
     flex-shrink: 0;
-    width: 240px;
+    width: 45%; /* 佔據右半部大約 45% 的寬度 */
+    max-width: 680px; /* 防止在大螢幕下過大 */
+    aspect-ratio: 16 / 9;
     border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
     box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     border: 1px solid rgba(255,255,255,0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    align-self: center;
 }
 
 .yt-thumbnail-container:hover {
@@ -281,9 +283,8 @@ header {
 
 .yt-thumbnail {
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
-    aspect-ratio: 16 / 9;
     object-fit: cover;
     transition: transform 0.5s ease;
 }
