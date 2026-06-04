@@ -10,7 +10,7 @@ function getYouTubeId(url) {
 }
 
 function renderTimeline(dataList) {
-    const container = document.getElementById('timeline-content');
+    const container = document.getElementById('timeline');
     container.innerHTML = '';
 
     // 按 era 分組，同時保持原本順序
