@@ -243,4 +243,18 @@ document.addEventListener('DOMContentLoaded', () => {
     createParticles();
     // 每 2 分鐘自動更新
     setInterval(loadData, 2 * 60 * 1000);
+
+    // 卡片上的關鍵字標籤也可篩選（event delegation）
+    document.getElementById('timeline').addEventListener('click', e => {
+        const tag = e.target.closest('.card-kw-tag');
+        if (!tag) return;
+        e.stopPropagation();
+        const k = tag.textContent.trim();
+        currentFilter = (currentFilter === k) ? null : k;
+        // 同步更新 header 的全域標籤 active 狀態
+        document.querySelectorAll('.kw-tag').forEach(t => {
+            t.classList.toggle('active', t.textContent.trim() === currentFilter);
+        });
+        renderTimeline(globalItems);
+    });
 });
