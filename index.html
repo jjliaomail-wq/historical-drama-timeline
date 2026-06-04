@@ -19,13 +19,13 @@
         <div id="allKeywords" class="tags"></div>
     </header>
 
-    <main class="timeline-container">
-        <div class="timeline-line"></div>
-        <div id="timeline-content"></div>
-    </main>
+    <main id="content"></main>
 
-    <script src="data.js"></script>
-    <script src="app.js"></script>
-    <script src="web_keyword_filter/script.js"></script>
+    <script src="/historical-drama-timeline/data.js" defer></script>
+    <script src="/historical-drama-timeline/app.js" defer></script>
+    <script src="/historical-drama-timeline/web_keyword_filter/script.js" defer></script>
+    <script>
+      console.log('inline check: keyword script loaded?', typeof loadFromSheet === 'function');
+    </script>
 </body>
 </html>
