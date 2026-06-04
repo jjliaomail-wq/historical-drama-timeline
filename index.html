@@ -8,23 +8,60 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="/historical-drama-timeline/web_keyword_filter/style.css">
+    <style>
+        /* 關鍵字標籤樣式 */
+        #allKeywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            padding: 12px 0 4px;
+        }
+        .kw-tag {
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            color: #d4af37;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+            user-select: none;
+        }
+        .kw-tag:hover, .kw-tag.active {
+            background: rgba(212, 175, 55, 0.35);
+            transform: translateY(-1px);
+        }
+        .kw-tag.active {
+            border-color: #d4af37;
+            font-weight: 600;
+        }
+        /* 每張卡片底部的小標籤 */
+        .card-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .card-kw-tag {
+            font-size: 0.72rem;
+            padding: 2px 8px;
+        }
+    </style>
 </head>
 <body>
     <div class="background-overlay"></div>
     <div class="particles" id="particles"></div>
-    
+
     <header>
         <h1 class="title">歷史劇時光機</h1>
         <p class="subtitle">跟隨時間的長河，品味每個朝代的經典愛恨情仇</p>
-        <div id="allKeywords" class="tags"></div>
+        <div id="allKeywords"></div>
     </header>
 
-    <main id="content"></main>
     <section id="timeline"></section>
 
     <script src="/historical-drama-timeline/data.js" defer></script>
     <script src="/historical-drama-timeline/app.js" defer></script>
-    <script src="/historical-drama-timeline/web_keyword_filter/script.js" defer></script>
 </body>
 </html>
