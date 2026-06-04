@@ -1,0 +1,21 @@
+/* style.css – keyword tags styling */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.tag {
+  background: #4ecdc4;
+  color: #111;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.tag:hover { background: #3bb8a4; }
+
+.card { background: #ffffff20; border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+.title { font-weight: 600; margin-bottom: 0.4rem; }
+.video { margin-top: 0.6rem; font-size: 0.9rem; }
