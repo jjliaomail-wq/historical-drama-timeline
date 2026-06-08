@@ -81,6 +81,8 @@ async function loadCSV(sheetId) {
 // =============================================
 let currentFilter = null;
 let globalItems = [];
+const incrementedViews = new Set();
+const openedDiscussions = new Set();
 
 function renderAllKeywords(items) {
     const container = document.getElementById('allKeywords');
@@ -108,6 +110,35 @@ function renderAllKeywords(items) {
 // 渲染：時間軸（app.js 原有功能）
 // =============================================
 function renderTimeline(dataList) {
+    // Helper: get or init data from localStorage
+    const storage = {
+        getViews: title => parseInt(localStorage.getItem(`view_${title}`) || '0'),
+        incViews: title => {
+            const key = `view_${title}`;
+            let cnt = parseInt(localStorage.getItem(key) || '0') || 0;
+            if (!incrementedViews.has(title)) {
+                cnt += 1;
+                localStorage.setItem(key, cnt);
+                incrementedViews.add(title);
+            }
+            return cnt;
+        },
+        getComments: title => JSON.parse(localStorage.getItem(`comments_${title}`) || '[]'),
+        addComment: (title, comment) => {
+            const key = `comments_${title}`;
+            const arr = JSON.parse(localStorage.getItem(key) || '[]');
+            arr.push(comment);
+            localStorage.setItem(key, JSON.stringify(arr));
+        },
+        getRatings: title => JSON.parse(localStorage.getItem(`ratings_${title}`) || '[]'),
+        addRating: (title, rating) => {
+            const key = `ratings_${title}`;
+            const arr = JSON.parse(localStorage.getItem(key) || '[]');
+            arr.push(rating);
+            localStorage.setItem(key, JSON.stringify(arr));
+        }
+    };
+
     const container = document.getElementById('timeline');
     if (!container) { console.error('找不到 #timeline 容器'); return; }
     container.innerHTML = '';
@@ -169,17 +200,83 @@ function renderTimeline(dataList) {
 
             const card = document.createElement('div');
             card.className = 'timeline-item';
+            // Increment view count for this drama
+            const viewCount = storage.incViews(drama.title);
+            // Compute average rating
+            const ratings = storage.getRatings(drama.title);
+            const avgRating = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '尚無評分';
+            const roundedAvg = ratings.length ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0;
+            // Render comments list
+            const comments = storage.getComments(drama.title);
+            const commentsHtml = comments.map(c => `<div class="comment"><span class="cmt-user">匿名</span> <span class="cmt-time">${c.time}</span><br><span class="cmt-text">${c.text}</span></div>`).join('');
+            const ratingStars = Array.from({length:5},(_,i)=>`<span class="star${i < roundedAvg ? ' filled' : ''}" data-star="${i+1}">&#9733;</span>`).join('');
+            
+            // Check if discussion should be open
+            const isDiscussOpen = openedDiscussions.has(drama.title);
+            const discussClass = isDiscussOpen ? 'discussion' : 'discussion hidden';
+
             card.innerHTML = `
                 <div class="drama-card">
                     <div class="card-text">
                         <h3 class="drama-title">${drama.title || ''}</h3>
                         <p class="drama-desc">${drama.description || ''}</p>
                         ${kwHtml}
+                        <div class="view-count">瀏覽次數: ${viewCount}</div>
+                        <div class="rating-section">
+                            <div class="avg-rating">平均評分: ${avgRating}</div>
+                            <div class="star-rating" data-title="${drama.title}">${ratingStars}</div>
+                        </div>
+                        <button class="toggle-discuss">討論區</button>
+                        <div class="${discussClass}" data-title="${drama.title}">
+                            <div class="existing-comments">
+                                ${commentsHtml || '<p>尚無評論</p>'}
+                            </div>
+                            <div class="new-comment">
+                                <textarea class="cmt-input" rows="2" placeholder="留下您的評論..."></textarea>
+                                <br>
+                                <button class="submit-cmt">送出評論</button>
+                            </div>
+                        </div>
                     </div>
                     ${youtubeHtml}
                 </div>
             `;
             grid.appendChild(card);
+            // Attach events for rating stars
+            const starContainer = card.querySelector('.star-rating');
+            starContainer.addEventListener('click', e => {
+                const star = e.target.closest('.star');
+                if (!star) return;
+                const rating = parseInt(star.getAttribute('data-star'));
+                const title = starContainer.getAttribute('data-title');
+                storage.addRating(title, rating);
+                // Re‑render timeline to update avg rating
+                renderTimeline(dataList);
+            });
+            // Toggle discussion area
+            const toggleBtn = card.querySelector('.toggle-discuss');
+            const discussDiv = card.querySelector('.discussion');
+            toggleBtn.addEventListener('click', () => {
+                const isHidden = discussDiv.classList.toggle('hidden');
+                if (isHidden) {
+                    openedDiscussions.delete(drama.title);
+                } else {
+                    openedDiscussions.add(drama.title);
+                }
+            });
+            // Submit comment handling
+            const submitBtn = card.querySelector('.submit-cmt');
+            const textarea = card.querySelector('.cmt-input');
+            submitBtn.addEventListener('click', () => {
+                const text = textarea.value.trim();
+                if (!text) return;
+                const title = discussDiv.getAttribute('data-title');
+                const comment = { text, time: new Date().toLocaleString() };
+                storage.addComment(title, comment);
+                textarea.value = '';
+                // Re‑render timeline to show new comment
+                renderTimeline(dataList);
+            });
         });
     });
 
@@ -238,7 +335,18 @@ async function loadData() {
     }
 }
 
+function updateSiteViews() {
+    let views = parseInt(localStorage.getItem('site_total_views') || '0');
+    views += 1;
+    localStorage.setItem('site_total_views', views);
+    const siteViewsEl = document.getElementById('site-views');
+    if (siteViewsEl) {
+        siteViewsEl.textContent = views;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    updateSiteViews();
     loadData();
     createParticles();
     // 每 2 分鐘自動更新
