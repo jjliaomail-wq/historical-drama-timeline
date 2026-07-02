@@ -80,7 +80,8 @@ async function loadCSV(sheetId) {
 // 渲染：全域關鍵字標籤列
 // =============================================
 let currentFilter = null;
-let currentSort = 'default';
+let currentSortType = 'time';
+let currentSortOrder = 'asc';
 let globalItems = [];
 const openedDiscussions = new Set();
 
@@ -144,27 +145,27 @@ function renderTimeline(dataList) {
         ? dataList.filter(d => d.keywordList && d.keywordList.includes(currentFilter))
         : dataList.slice();
 
-    if (currentSort === 'title_asc') {
-        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else if (currentSort === 'title_desc') {
-        filtered.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
-    } else if (currentSort === 'rating_desc') {
+    if (currentSortType === 'time' && currentSortOrder === 'desc') {
+        filtered.reverse();
+    } else if (currentSortType === 'rating') {
         filtered.sort((a, b) => {
             const ra = storage.getRatings(a.title);
             const rb = storage.getRatings(b.title);
             const avga = ra.length ? ra.reduce((sum, v) => sum + v, 0) / ra.length : 0;
             const avgb = rb.length ? rb.reduce((sum, v) => sum + v, 0) / rb.length : 0;
-            return avgb - avga;
+            return currentSortOrder === 'desc' ? avgb - avga : avga - avgb;
         });
-    } else if (currentSort === 'views_desc') {
-        filtered.sort((a, b) => storage.getViews(b.title) - storage.getViews(a.title));
-    } else if (currentSort === 'default_desc') {
-        filtered.reverse();
+    } else if (currentSortType === 'views') {
+        filtered.sort((a, b) => {
+            return currentSortOrder === 'desc'
+                ? storage.getViews(b.title) - storage.getViews(a.title)
+                : storage.getViews(a.title) - storage.getViews(b.title);
+        });
     }
 
-    // 按 era 分組
+    // 按 era 分組 (只有時間排序才分組)
     const groups = [];
-    if (currentSort === 'default' || currentSort === 'default_desc') {
+    if (currentSortType === 'time') {
         const seenEras = {};
         filtered.forEach(drama => {
             const era = drama.era || '未分類';
@@ -384,14 +385,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // 每 2 分鐘自動更新
     setInterval(loadData, 2 * 60 * 1000);
 
-    // 初始化排序選單
-    const sortSelect = document.getElementById('sortSelect');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', e => {
-            currentSort = e.target.value;
+    // 初始化排序按鈕
+    const sortBtns = document.querySelectorAll('.sort-btn');
+    sortBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const type = btn.getAttribute('data-sort');
+            if (currentSortType === type) {
+                // Toggle order
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Change sort type
+                currentSortType = type;
+                // 預設: 評分和瀏覽優先從大到小 (desc)，時間優先從小到大 (asc)
+                currentSortOrder = (type === 'time') ? 'asc' : 'desc';
+            }
+            
+            // 更新按鈕樣式與箭頭
+            sortBtns.forEach(b => {
+                b.classList.remove('active');
+                b.querySelector('span').textContent = '-';
+            });
+            btn.classList.add('active');
+            btn.querySelector('span').textContent = currentSortOrder === 'asc' ? '▲' : '▼';
+            
             renderTimeline(globalItems);
         });
-    }
+    });
 
     // 卡片上的關鍵字標籤也可篩選（event delegation）
     document.getElementById('timeline').addEventListener('click', e => {
