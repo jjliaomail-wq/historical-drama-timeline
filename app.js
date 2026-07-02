@@ -125,7 +125,11 @@ function renderTimeline(dataList) {
             if (GAS_API_URL) {
                 const item = globalItems.find(d => d.title === title);
                 if (item) item.views = (item.views || 0) + 1;
-                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'view', title: title }) }).catch(e=>console.error(e));
+                fetch(GAS_API_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'view', title: title }) 
+                }).then(r=>r.text()).then(t=>console.log("View saved:", t)).catch(e=>console.error(e));
                 return item ? item.views : 1;
             }
             const key = `view_${title}`;
@@ -145,7 +149,11 @@ function renderTimeline(dataList) {
                     if (!item.comments) item.comments = [];
                     item.comments.push(comment);
                 }
-                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'comment', title: title, comment: comment }) }).catch(e=>console.error(e));
+                fetch(GAS_API_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'comment', title: title, comment: comment }) 
+                }).then(r=>r.text()).then(t=>console.log("Comment saved:", t)).catch(e=>console.error(e));
                 return;
             }
             const key = `comments_${title}`;
@@ -164,7 +172,11 @@ function renderTimeline(dataList) {
                     if (!item.ratings) item.ratings = [];
                     item.ratings.push(rating);
                 }
-                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'rating', title: title, rating: rating }) }).catch(e=>console.error(e));
+                fetch(GAS_API_URL, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'rating', title: title, rating: rating }) 
+                }).then(r=>r.text()).then(t=>console.log("Rating saved:", t)).catch(e=>console.error(e));
                 return;
             }
             const key = `ratings_${title}`;
