@@ -1,7 +1,11 @@
 // =============================================
-// 設定：Google 試算表網址
+// 設定：API 網址 (Google Apps Script)
 // =============================================
-const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1D8NGodZsduKff5VSyC4h-Su_LXOUuXq6DKoLKTh3JZs/edit?usp=sharing";
+// 只要把部署好的 Apps Script 網址貼在下方，系統就會自動切換成「安全後端模式」。
+// 如果保持空白，則會使用下方的公開 CSV 備用網址 (只存在瀏覽器的 localStorage)。
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxJvEoh_gTqB-x6GGQUAP0yOtncDoFS1vn2lkYdUtZI4GgFBtkNfIgc2yrQfrTbxPYa/exec"; 
+
+const FALLBACK_CSV_URL = "https://docs.google.com/spreadsheets/d/1D8NGodZsduKff5VSyC4h-Su_LXOUuXq6DKoLKTh3JZs/edit?usp=sharing";
 
 // =============================================
 // 工具函式
@@ -111,25 +115,58 @@ function renderAllKeywords(items) {
 // 渲染：時間軸（app.js 原有功能）
 // =============================================
 function renderTimeline(dataList) {
-    // Helper: get or init data from localStorage
+    // Helper: get or init data from localStorage or GAS data
     const storage = {
-        getViews: title => parseInt(localStorage.getItem(`view_${title}`) || '0'),
+        getViews: title => {
+            if (GAS_API_URL) return (globalItems.find(d => d.title === title)?.views) || 0;
+            return parseInt(localStorage.getItem(`view_${title}`) || '0');
+        },
         incViews: title => {
+            if (GAS_API_URL) {
+                const item = globalItems.find(d => d.title === title);
+                if (item) item.views = (item.views || 0) + 1;
+                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'view', title: title }) }).catch(e=>console.error(e));
+                return item ? item.views : 1;
+            }
             const key = `view_${title}`;
             let cnt = parseInt(localStorage.getItem(key) || '0') || 0;
             cnt += 1;
             localStorage.setItem(key, cnt);
             return cnt;
         },
-        getComments: title => JSON.parse(localStorage.getItem(`comments_${title}`) || '[]'),
+        getComments: title => {
+            if (GAS_API_URL) return (globalItems.find(d => d.title === title)?.comments) || [];
+            return JSON.parse(localStorage.getItem(`comments_${title}`) || '[]');
+        },
         addComment: (title, comment) => {
+            if (GAS_API_URL) {
+                const item = globalItems.find(d => d.title === title);
+                if (item) {
+                    if (!item.comments) item.comments = [];
+                    item.comments.push(comment);
+                }
+                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'comment', title: title, comment: comment }) }).catch(e=>console.error(e));
+                return;
+            }
             const key = `comments_${title}`;
             const arr = JSON.parse(localStorage.getItem(key) || '[]');
             arr.push(comment);
             localStorage.setItem(key, JSON.stringify(arr));
         },
-        getRatings: title => JSON.parse(localStorage.getItem(`ratings_${title}`) || '[]'),
+        getRatings: title => {
+            if (GAS_API_URL) return (globalItems.find(d => d.title === title)?.ratings) || [];
+            return JSON.parse(localStorage.getItem(`ratings_${title}`) || '[]');
+        },
         addRating: (title, rating) => {
+            if (GAS_API_URL) {
+                const item = globalItems.find(d => d.title === title);
+                if (item) {
+                    if (!item.ratings) item.ratings = [];
+                    item.ratings.push(rating);
+                }
+                fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: 'rating', title: title, rating: rating }) }).catch(e=>console.error(e));
+                return;
+            }
             const key = `ratings_${title}`;
             const arr = JSON.parse(localStorage.getItem(key) || '[]');
             arr.push(rating);
@@ -355,16 +392,34 @@ function createParticles() {
 // 主入口
 // =============================================
 async function loadData() {
-    const sheetId = extractSheetId(GOOGLE_SHEET_CSV_URL);
-    if (!sheetId) { console.error('無法解析 sheetId'); return; }
     try {
-        const items = await loadCSV(sheetId);
+        let items = [];
+        if (GAS_API_URL) {
+            // [安全模式]：透過 Apps Script 抓取過濾後的 JSON，試算表可維持「私人」
+            const res = await fetch(GAS_API_URL);
+            items = await res.json();
+            items.forEach(obj => {
+                obj.keywordList = obj.keywords
+                    ? obj.keywords.split(/[,;，、]/).map(k => k.trim()).filter(Boolean)
+                    : [];
+                // 確保數值型態正確
+                obj.views = parseInt(obj.views) || 0;
+                if (!Array.isArray(obj.ratings)) obj.ratings = [];
+                if (!Array.isArray(obj.comments)) obj.comments = [];
+            });
+        } else {
+            // [備用模式]：讀取公開的 CSV 連結 (無法回寫試算表，只能存在 LocalStorage)
+            const sheetId = extractSheetId(FALLBACK_CSV_URL);
+            if (!sheetId) throw new Error('無法解析 CSV URL');
+            items = await loadCSV(sheetId);
+        }
+        
         console.log('✅ 取得資料筆數:', items.length);
         globalItems = items;
         renderAllKeywords(items);
         renderTimeline(items);
     } catch (e) {
-        console.error('❌ 載入試算表失敗:', e);
+        console.error('❌ 載入資料失敗:', e);
     }
 }
 
