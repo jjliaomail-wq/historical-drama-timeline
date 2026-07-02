@@ -397,15 +397,46 @@ async function loadData() {
         if (GAS_API_URL) {
             // [安全模式]：透過 Apps Script 抓取過濾後的 JSON，試算表可維持「私人」
             const res = await fetch(GAS_API_URL);
-            items = await res.json();
-            items.forEach(obj => {
+            const rawItems = await res.json();
+
+            // 欄位名稱映射：試算表中文標題 -> 前端英文 key
+            // 支援精確匹配和模糊匹配（只要欄位名稱包含英文 key 就對應）
+            const FIELD_MAP = {
+                'era': ['era', '朝代', 'era (朝代/時期)'],
+                'period': ['period', '時期', 'period (年代)'],
+                'title': ['title', '劇名', 'title (劇名)'],
+                'description': ['description', '劇情介紹', 'description (劇情介紹)'],
+                'youtubeUrl': ['youtubeUrl', 'youtubeurl', 'youtube', 'youtubeUrl (YouTube 連結)'],
+                'keywords': ['keywords', '關鍵字', 'keywords (關鍵字)'],
+                'views': ['views', '瀏覽次數'],
+                'ratings': ['ratings', '評分'],
+                'comments': ['comments', '留言']
+            };
+
+            items = rawItems.map(raw => {
+                const obj = {};
+                const rawKeys = Object.keys(raw);
+                
+                for (const [field, aliases] of Object.entries(FIELD_MAP)) {
+                    // 先嘗試精確匹配
+                    let matched = aliases.find(a => rawKeys.includes(a));
+                    if (!matched) {
+                        // 再嘗試模糊匹配（欄位名稱包含英文 key，不分大小寫）
+                        matched = rawKeys.find(k => k.toLowerCase().includes(field.toLowerCase()));
+                    }
+                    obj[field] = matched ? raw[matched] : (raw[field] || '');
+                }
+
+                // 解析關鍵字
                 obj.keywordList = obj.keywords
-                    ? obj.keywords.split(/[,;，、]/).map(k => k.trim()).filter(Boolean)
+                    ? String(obj.keywords).split(/[,;，、]/).map(k => k.trim()).filter(Boolean)
                     : [];
                 // 確保數值型態正確
                 obj.views = parseInt(obj.views) || 0;
-                if (!Array.isArray(obj.ratings)) obj.ratings = [];
-                if (!Array.isArray(obj.comments)) obj.comments = [];
+                try { if (!Array.isArray(obj.ratings)) obj.ratings = obj.ratings ? JSON.parse(obj.ratings) : []; } catch(e) { obj.ratings = []; }
+                try { if (!Array.isArray(obj.comments)) obj.comments = obj.comments ? JSON.parse(obj.comments) : []; } catch(e) { obj.comments = []; }
+                
+                return obj;
             });
         } else {
             console.error('❌ 請設定 GAS_API_URL');
