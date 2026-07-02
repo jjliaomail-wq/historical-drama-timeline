@@ -80,8 +80,8 @@ async function loadCSV(sheetId) {
 // 渲染：全域關鍵字標籤列
 // =============================================
 let currentFilter = null;
+let currentSort = 'default';
 let globalItems = [];
-const incrementedViews = new Set();
 const openedDiscussions = new Set();
 
 function renderAllKeywords(items) {
@@ -116,11 +116,8 @@ function renderTimeline(dataList) {
         incViews: title => {
             const key = `view_${title}`;
             let cnt = parseInt(localStorage.getItem(key) || '0') || 0;
-            if (!incrementedViews.has(title)) {
-                cnt += 1;
-                localStorage.setItem(key, cnt);
-                incrementedViews.add(title);
-            }
+            cnt += 1;
+            localStorage.setItem(key, cnt);
             return cnt;
         },
         getComments: title => JSON.parse(localStorage.getItem(`comments_${title}`) || '[]'),
@@ -143,24 +140,46 @@ function renderTimeline(dataList) {
     if (!container) { console.error('找不到 #timeline 容器'); return; }
     container.innerHTML = '';
 
-    const filtered = currentFilter
+    let filtered = currentFilter
         ? dataList.filter(d => d.keywordList && d.keywordList.includes(currentFilter))
-        : dataList;
+        : dataList.slice();
+
+    if (currentSort === 'title_asc') {
+        filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (currentSort === 'title_desc') {
+        filtered.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+    } else if (currentSort === 'rating_desc') {
+        filtered.sort((a, b) => {
+            const ra = storage.getRatings(a.title);
+            const rb = storage.getRatings(b.title);
+            const avga = ra.length ? ra.reduce((sum, v) => sum + v, 0) / ra.length : 0;
+            const avgb = rb.length ? rb.reduce((sum, v) => sum + v, 0) / rb.length : 0;
+            return avgb - avga;
+        });
+    } else if (currentSort === 'views_desc') {
+        filtered.sort((a, b) => storage.getViews(b.title) - storage.getViews(a.title));
+    } else if (currentSort === 'default_desc') {
+        filtered.reverse();
+    }
 
     // 按 era 分組
     const groups = [];
-    const seenEras = {};
-    filtered.forEach(drama => {
-        const era = drama.era || '未分類';
-        if (seenEras[era] === undefined) {
-            seenEras[era] = groups.length;
-            groups.push({ era, period: drama.period || '', items: [] });
-        }
-        groups[seenEras[era]].items.push(drama);
-    });
+    if (currentSort === 'default' || currentSort === 'default_desc') {
+        const seenEras = {};
+        filtered.forEach(drama => {
+            const era = drama.era || '未分類';
+            if (seenEras[era] === undefined) {
+                seenEras[era] = groups.length;
+                groups.push({ era, period: drama.period || '', items: [] });
+            }
+            groups[seenEras[era]].items.push(drama);
+        });
+    } else {
+        groups.push({ era: '排序結果', period: '', items: filtered });
+    }
 
-    if (groups.length === 0) {
-        container.innerHTML = '<p style="text-align:center;color:#d4af37;padding:40px;">目前無符合篩選條件的資料</p>';
+    if (groups.length === 0 || groups.every(g => g.items.length === 0)) {
+        container.innerHTML = '<p style="text-align:center;color:#d4af37;padding:40px;">目前無符合條件的資料</p>';
         return;
     }
 
@@ -200,8 +219,8 @@ function renderTimeline(dataList) {
 
             const card = document.createElement('div');
             card.className = 'timeline-item';
-            // Increment view count for this drama
-            const viewCount = storage.incViews(drama.title);
+            // Get view count for this drama
+            const viewCount = storage.getViews(drama.title);
             // Compute average rating
             const ratings = storage.getRatings(drama.title);
             const avgRating = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : '尚無評分';
@@ -242,6 +261,19 @@ function renderTimeline(dataList) {
                 </div>
             `;
             grid.appendChild(card);
+            
+            // Attach event for YouTube link click to increment view count
+            const ytLink = card.querySelector('.yt-thumbnail-container');
+            if (ytLink) {
+                ytLink.addEventListener('click', () => {
+                    const newCount = storage.incViews(drama.title);
+                    const viewEl = card.querySelector('.view-count');
+                    if (viewEl) {
+                        viewEl.textContent = `瀏覽次數: ${newCount}`;
+                    }
+                });
+            }
+
             // Attach events for rating stars
             const starContainer = card.querySelector('.star-rating');
             starContainer.addEventListener('click', e => {
@@ -351,6 +383,15 @@ document.addEventListener('DOMContentLoaded', () => {
     createParticles();
     // 每 2 分鐘自動更新
     setInterval(loadData, 2 * 60 * 1000);
+
+    // 初始化排序選單
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', e => {
+            currentSort = e.target.value;
+            renderTimeline(globalItems);
+        });
+    }
 
     // 卡片上的關鍵字標籤也可篩選（event delegation）
     document.getElementById('timeline').addEventListener('click', e => {

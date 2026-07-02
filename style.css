@@ -72,6 +72,37 @@ header {
     letter-spacing: 0.05em;
 }
 
+.controls-container {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.sort-select {
+    background: rgba(30, 41, 59, 0.7);
+    color: var(--text-primary);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    cursor: pointer;
+    font-family: 'Inter', 'Noto Serif TC', sans-serif;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.sort-select:hover, .sort-select:focus {
+    border-color: #d4af37;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.sort-select option {
+    background: #0f172a;
+    color: #f8fafc;
+}
+
 .timeline-container {
     max-width: 1600px; /* 電腦版拉寬，讓影集方塊幾乎跟螢幕一樣寬 */
     width: 92%;
