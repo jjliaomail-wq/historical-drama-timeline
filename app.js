@@ -5,7 +5,7 @@
 // 如果保持空白，則會使用下方的公開 CSV 備用網址 (只存在瀏覽器的 localStorage)。
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxJvEoh_gTqB-x6GGQUAP0yOtncDoFS1vn2lkYdUtZI4GgFBtkNfIgc2yrQfrTbxPYa/exec"; 
 
-const FALLBACK_CSV_URL = "https://docs.google.com/spreadsheets/d/1D8NGodZsduKff5VSyC4h-Su_LXOUuXq6DKoLKTh3JZs/edit?usp=sharing";
+// (備用 CSV 網址已移除，避免在公開 repo 中洩漏試算表位置)
 
 // =============================================
 // 工具函式
@@ -408,10 +408,7 @@ async function loadData() {
                 if (!Array.isArray(obj.comments)) obj.comments = [];
             });
         } else {
-            // [備用模式]：讀取公開的 CSV 連結 (無法回寫試算表，只能存在 LocalStorage)
-            const sheetId = extractSheetId(FALLBACK_CSV_URL);
-            if (!sheetId) throw new Error('無法解析 CSV URL');
-            items = await loadCSV(sheetId);
+            console.error('❌ 請設定 GAS_API_URL');
         }
         
         console.log('✅ 取得資料筆數:', items.length);
