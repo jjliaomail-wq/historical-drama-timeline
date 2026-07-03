@@ -295,7 +295,7 @@ function renderTimeline(dataList) {
                             <div class="avg-rating">平均評分: ${avgRating}</div>
                             <div class="star-rating" data-title="${drama.title}">${ratingStars}</div>
                         </div>
-                        <button class="toggle-discuss">討論區</button>
+                        <button class="toggle-discuss">討論區(${comments.length})</button>
                         <div class="${discussClass}" data-title="${drama.title}">
                             <div class="existing-comments">
                                 ${commentsHtml || '<p>尚無評論</p>'}
