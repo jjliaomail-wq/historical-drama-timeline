@@ -299,6 +299,9 @@ header {
     .title {
         font-size: 2.5rem;
     }
+    .discussion {
+        flex-direction: column;
+    }
 }
 
 .yt-thumbnail-container {
@@ -360,9 +363,8 @@ header {
     transform: translate(-50%, -50%) scale(1.1);
 }
 
-/* Rating stars */
+/* Rating stars (display only on card) */
 .star {
-    cursor: pointer;
     font-size: 1.2rem;
     color: #555;
     margin-right: 2px;
@@ -370,6 +372,10 @@ header {
 }
 .star.filled {
     color: #ffd700;
+}
+.star-display-container {
+    display: inline-flex;
+    gap: 1px;
 }
 .rating-section {
     margin-top: 0.5rem;
@@ -380,6 +386,22 @@ header {
 .avg-rating {
     font-weight: 600;
     color: var(--accent-color);
+}
+
+/* Interactive star selector in comment form */
+.star-select {
+    transition: transform 0.15s ease, text-shadow 0.15s ease;
+    user-select: none;
+}
+.star-select:hover {
+    transform: scale(1.3);
+    text-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+}
+.cmt-rating-input {
+    padding: 4px 0;
+}
+.cmt-rating {
+    letter-spacing: 1px;
 }
 
 /* View count */
@@ -395,12 +417,38 @@ header {
     margin-top: 0.5rem;
 }
 .discussion {
-    display: block;
+    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
     margin-top: 0.5rem;
     background: rgba(30,41,59,0.5);
-    padding: 0.8rem;
+    padding: 1.2rem;
     border-radius: 8px;
     border: 1px solid var(--card-border);
+    align-items: flex-start;
+}
+.existing-comments {
+    flex: 1;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+.new-comment {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+/* Scrollbar styling for comments */
+.existing-comments::-webkit-scrollbar {
+    width: 6px;
+}
+.existing-comments::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+}
+.existing-comments::-webkit-scrollbar-thumb {
+    background: rgba(212,175,55,0.3);
+    border-radius: 4px;
 }
 .toggle-discuss {
     margin-top: 0.5rem;
@@ -432,9 +480,9 @@ header {
     margin-top: 0.2rem;
     white-space: pre-wrap;
 }
-.new-comment textarea.cmt-input {
+.new-comment textarea.cmt-input,
+.new-comment input.cmt-name {
     width: 100%;
-    resize: vertical;
     border: 1px solid var(--card-border);
     background: var(--card-bg);
     color: var(--text-primary);
@@ -442,6 +490,9 @@ header {
     border-radius: 4px;
     font-family: inherit;
     margin-bottom: 0.3rem;
+}
+.new-comment textarea.cmt-input {
+    resize: vertical;
 }
 .submit-cmt {
     background: var(--accent-color);

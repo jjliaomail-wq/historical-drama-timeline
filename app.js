@@ -277,8 +277,12 @@ function renderTimeline(dataList) {
             const roundedAvg = ratings.length ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0;
             // Render comments list
             const comments = storage.getComments(drama.title);
-            const commentsHtml = comments.map(c => `<div class="comment"><span class="cmt-user">匿名</span> <span class="cmt-time">${c.time}</span><br><span class="cmt-text">${c.text}</span></div>`).join('');
-            const ratingStars = Array.from({length:5},(_,i)=>`<span class="star${i < roundedAvg ? ' filled' : ''}" data-star="${i+1}">&#9733;</span>`).join('');
+            const commentsHtml = comments.map(c => {
+                const rStars = c.rating ? `<span class="cmt-rating" style="color:#d4af37; font-size:0.9rem;">${'★'.repeat(c.rating)}${'☆'.repeat(5-c.rating)}</span> ` : '';
+                const txt = c.text ? `<br><span class="cmt-text">${c.text}</span>` : '';
+                return `<div class="comment"><span class="cmt-user">${c.userName || '匿名'}</span> ${rStars}<span class="cmt-time">${c.time}</span>${txt}</div>`;
+            }).join('');
+            const ratingDisplayStars = Array.from({length:5},(_,i)=>`<span class="star${i < roundedAvg ? ' filled' : ''}">&#9733;</span>`).join('');
             
             // Check if discussion should be open
             const isDiscussOpen = openedDiscussions.has(drama.title);
@@ -293,17 +297,31 @@ function renderTimeline(dataList) {
                         <div class="view-count">瀏覽次數: ${viewCount}</div>
                         <div class="rating-section">
                             <div class="avg-rating">平均評分: ${avgRating}</div>
-                            <div class="star-rating" data-title="${drama.title}">${ratingStars}</div>
+                            <div class="star-display-container">${ratingDisplayStars}</div>
                         </div>
-                        <button class="toggle-discuss">討論區(${comments.length})</button>
+                        <button class="toggle-discuss">評分與討論區(${comments.length})</button>
                         <div class="${discussClass}" data-title="${drama.title}">
                             <div class="existing-comments">
                                 ${commentsHtml || '<p>尚無評論</p>'}
                             </div>
                             <div class="new-comment">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                    <label style="font-size:0.85rem; color:#ccc; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                                        <input type="checkbox" class="cmt-anon-check"> 匿名
+                                    </label>
+                                    <input type="text" class="cmt-name" placeholder="您的名稱" value="${localStorage.getItem('userName') || ''}">
+                                </div>
+                                <div class="cmt-rating-input" style="margin-bottom:8px; display:flex; align-items:center;">
+                                    <span style="font-size:0.85rem; margin-right:5px;">給予評分：</span>
+                                    <span class="star-select" data-val="1" style="cursor:pointer; color:#d4af37; font-size:1.2rem;">☆</span>
+                                    <span class="star-select" data-val="2" style="cursor:pointer; color:#d4af37; font-size:1.2rem;">☆</span>
+                                    <span class="star-select" data-val="3" style="cursor:pointer; color:#d4af37; font-size:1.2rem;">☆</span>
+                                    <span class="star-select" data-val="4" style="cursor:pointer; color:#d4af37; font-size:1.2rem;">☆</span>
+                                    <span class="star-select" data-val="5" style="cursor:pointer; color:#d4af37; font-size:1.2rem;">☆</span>
+                                </div>
                                 <textarea class="cmt-input" rows="2" placeholder="留下您的評論..."></textarea>
                                 <br>
-                                <button class="submit-cmt">送出評論</button>
+                                <button class="submit-cmt">送出</button>
                             </div>
                         </div>
                     </div>
@@ -324,17 +342,6 @@ function renderTimeline(dataList) {
                 });
             }
 
-            // Attach events for rating stars
-            const starContainer = card.querySelector('.star-rating');
-            starContainer.addEventListener('click', e => {
-                const star = e.target.closest('.star');
-                if (!star) return;
-                const rating = parseInt(star.getAttribute('data-star'));
-                const title = starContainer.getAttribute('data-title');
-                storage.addRating(title, rating);
-                // Re‑render timeline to update avg rating
-                renderTimeline(dataList);
-            });
             // Toggle discussion area
             const toggleBtn = card.querySelector('.toggle-discuss');
             const discussDiv = card.querySelector('.discussion');
@@ -349,12 +356,66 @@ function renderTimeline(dataList) {
             // Submit comment handling
             const submitBtn = card.querySelector('.submit-cmt');
             const textarea = card.querySelector('.cmt-input');
+            const nameInput = card.querySelector('.cmt-name');
+            const anonCheck = card.querySelector('.cmt-anon-check');
+
+            if (anonCheck) {
+                anonCheck.addEventListener('change', () => {
+                    nameInput.disabled = anonCheck.checked;
+                    nameInput.style.opacity = anonCheck.checked ? '0.5' : '1';
+                });
+            }
+
+            // Star selection handling
+            let selectedRating = 0;
+            const starSelects = card.querySelectorAll('.star-select');
+            const updateStarDisplay = (val) => {
+                starSelects.forEach(s => {
+                    s.textContent = parseInt(s.getAttribute('data-val')) <= val ? '★' : '☆';
+                });
+            };
+            starSelects.forEach(star => {
+                star.addEventListener('click', () => {
+                    selectedRating = parseInt(star.getAttribute('data-val'));
+                    updateStarDisplay(selectedRating);
+                });
+                star.addEventListener('mouseenter', () => {
+                    updateStarDisplay(parseInt(star.getAttribute('data-val')));
+                });
+                star.addEventListener('mouseleave', () => {
+                    updateStarDisplay(selectedRating);
+                });
+            });
+
             submitBtn.addEventListener('click', () => {
                 const text = textarea.value.trim();
-                if (!text) return;
+                if (!text && selectedRating === 0) {
+                    alert('請至少給予評分或留下評論');
+                    return;
+                }
+                
+                let userName = '匿名';
+                if (!anonCheck.checked) {
+                    userName = nameInput.value.trim() || '匿名';
+                    if (nameInput.value.trim()) {
+                        localStorage.setItem('userName', nameInput.value.trim());
+                    }
+                }
+                
                 const title = discussDiv.getAttribute('data-title');
-                const comment = { text, time: new Date().toLocaleString() };
+                
+                if (selectedRating > 0) {
+                    storage.addRating(title, selectedRating);
+                }
+                
+                const comment = { 
+                    userName, 
+                    text, 
+                    rating: selectedRating,
+                    time: new Date().toLocaleString() 
+                };
                 storage.addComment(title, comment);
+                
                 textarea.value = '';
                 // Re‑render timeline to show new comment
                 renderTimeline(dataList);
