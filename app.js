@@ -466,9 +466,25 @@ function createParticles() {
 // =============================================
 async function loadData() {
     try {
+        // 先嘗試從 localStorage 讀取快取資料，讓畫面可以瞬間顯示
+        const cachedData = localStorage.getItem('cached_drama_data');
+        if (cachedData) {
+            try {
+                const parsedCache = JSON.parse(cachedData);
+                if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+                    globalItems = parsedCache;
+                    renderAllKeywords(parsedCache);
+                    renderTimeline(parsedCache);
+                }
+            } catch(e) {
+                console.warn('讀取快取失敗:', e);
+            }
+        }
+
         let items = [];
         if (GAS_API_URL) {
             // [安全模式]：透過 Apps Script 抓取過濾後的 JSON，試算表可維持「私人」
+            // 背景非同步抓取最新資料
             const res = await fetch(GAS_API_URL);
             const rawItems = await res.json();
 
@@ -511,16 +527,20 @@ async function loadData() {
                 
                 return obj;
             });
+            
+            // 更新快取
+            localStorage.setItem('cached_drama_data', JSON.stringify(items));
         } else {
             console.error('❌ 請設定 GAS_API_URL');
         }
         
-        console.log('✅ 取得資料筆數:', items.length);
+        console.log('✅ 取得最新資料筆數:', items.length);
         globalItems = items;
         renderAllKeywords(items);
         renderTimeline(items);
     } catch (e) {
         console.error('❌ 載入資料失敗:', e);
+        // 若 fetch 失敗但有快取，確保畫面維持快取狀態
     }
 }
 
