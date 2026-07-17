@@ -118,7 +118,10 @@ function renderTimeline(dataList) {
     // Helper: get or init data from localStorage or GAS data
     const storage = {
         getViews: title => {
-            if (GAS_API_URL) return (globalItems.find(d => d.title === title)?.views) || 0;
+            if (GAS_API_URL) {
+                const v = globalItems.find(d => d.title === title)?.views;
+                return (typeof v === 'number' && !isNaN(v)) ? v : (parseInt(v) || 0);
+            }
             return parseInt(localStorage.getItem(`view_${title}`) || '0');
         },
         incViews: title => {
@@ -162,8 +165,11 @@ function renderTimeline(dataList) {
             localStorage.setItem(key, JSON.stringify(arr));
         },
         getRatings: title => {
-            if (GAS_API_URL) return (globalItems.find(d => d.title === title)?.ratings) || [];
-            return JSON.parse(localStorage.getItem(`ratings_${title}`) || '[]');
+            if (GAS_API_URL) {
+                const r = globalItems.find(d => d.title === title)?.ratings;
+                return Array.isArray(r) ? r : [];
+            }
+            try { return JSON.parse(localStorage.getItem(`ratings_${title}`) || '[]'); } catch(e) { return []; }
         },
         addRating: (title, rating) => {
             if (GAS_API_URL) {
@@ -197,19 +203,23 @@ function renderTimeline(dataList) {
     if (currentSortType === 'time' && currentSortOrder === 'desc') {
         filtered.reverse();
     } else if (currentSortType === 'rating') {
-        filtered.sort((a, b) => {
-            const ra = storage.getRatings(a.title);
-            const rb = storage.getRatings(b.title);
-            const avga = ra.length ? ra.reduce((sum, v) => sum + v, 0) / ra.length : 0;
-            const avgb = rb.length ? rb.reduce((sum, v) => sum + v, 0) / rb.length : 0;
-            return currentSortOrder === 'desc' ? avgb - avga : avga - avgb;
-        });
+        try {
+            filtered.sort((a, b) => {
+                const ra = storage.getRatings(a.title);
+                const rb = storage.getRatings(b.title);
+                const avga = ra.length ? ra.reduce((sum, v) => sum + (Number(v) || 0), 0) / ra.length : 0;
+                const avgb = rb.length ? rb.reduce((sum, v) => sum + (Number(v) || 0), 0) / rb.length : 0;
+                return currentSortOrder === 'desc' ? avgb - avga : avga - avgb;
+            });
+        } catch(e) { console.error('排序(評分)錯誤:', e); }
     } else if (currentSortType === 'views') {
-        filtered.sort((a, b) => {
-            return currentSortOrder === 'desc'
-                ? storage.getViews(b.title) - storage.getViews(a.title)
-                : storage.getViews(a.title) - storage.getViews(b.title);
-        });
+        try {
+            filtered.sort((a, b) => {
+                const va = storage.getViews(a.title) || 0;
+                const vb = storage.getViews(b.title) || 0;
+                return currentSortOrder === 'desc' ? vb - va : va - vb;
+            });
+        } catch(e) { console.error('排序(瀏覽)錯誤:', e); }
     }
 
     // 按 era 分組 (只有時間排序才分組)
@@ -432,7 +442,14 @@ function renderTimeline(dataList) {
             }
         });
     }, { threshold: 0.1 });
-    container.querySelectorAll('.timeline-item, .era-section').forEach(el => observer.observe(el));
+    container.querySelectorAll('.timeline-item, .era-section').forEach(el => {
+        observer.observe(el);
+        // 已在 viewport 內的元素直接顯示（排序重繪時需要）
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+            el.classList.add('visible');
+        }
+    });
 }
 
 // =============================================
