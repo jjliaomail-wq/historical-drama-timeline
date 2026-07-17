@@ -434,22 +434,32 @@ function renderTimeline(dataList) {
     });
 
     // Intersection Observer 淡入動畫
-    const observer = new IntersectionObserver((entries, obs) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
-                obs.unobserve(entry.target);
-            }
+    const allAnimatedEls = container.querySelectorAll('.timeline-item, .era-section');
+
+    if (currentSortType !== 'time') {
+        // 排序模式：直接顯示所有卡片，不等 IntersectionObserver
+        allAnimatedEls.forEach(el => el.classList.add('visible'));
+    } else {
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        // 用 rAF 確保瀏覽器完成佈局後再檢測位置
+        requestAnimationFrame(() => {
+            allAnimatedEls.forEach(el => {
+                observer.observe(el);
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    el.classList.add('visible');
+                }
+            });
         });
-    }, { threshold: 0.1 });
-    container.querySelectorAll('.timeline-item, .era-section').forEach(el => {
-        observer.observe(el);
-        // 已在 viewport 內的元素直接顯示（排序重繪時需要）
-        const rect = el.getBoundingClientRect();
-        if (rect.top < window.innerHeight && rect.bottom > 0) {
-            el.classList.add('visible');
-        }
-    });
+    }
 }
 
 // =============================================
